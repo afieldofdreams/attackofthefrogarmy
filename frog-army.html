@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Attack of the Frog Army</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#1a2810;touch-action:none}
+body{display:flex;flex-direction:column;font-family:'Press Start 2P',monospace}
+#wrap{position:relative;width:100%;height:100%;display:flex;flex-direction:column}
+canvas#game{flex:1;width:100%;min-height:0;image-rendering:pixelated;image-rendering:crisp-edges}
+#titleOv{position:absolute;top:0;left:0;right:0;bottom:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(180deg,#060c02 0%,#0a1808 40%,#0c2a0c 70%,#104010 100%);cursor:pointer}
+#titleOv .t1{font-size:clamp(10px,3vw,14px);color:#a0e840;margin-bottom:4px}
+#titleOv h1{font-size:clamp(22px,7vw,36px);color:#40e040;text-shadow:0 0 20px rgba(64,224,64,0.6),2px 2px 0 #0a300a;text-align:center}
+#titleOv .t2{font-size:clamp(8px,2.2vw,11px);color:#80c060;margin:10px 0 4px}
+#titleOv .by{font-size:clamp(12px,3.5vw,16px);color:#e0fc40;text-shadow:0 0 12px rgba(224,252,64,0.5);margin:4px 0 16px}
+#titleOv .hint{font-size:clamp(7px,2vw,9px);color:rgba(160,232,64,0.5);animation:bl 1s step-end infinite}
+@keyframes bl{50%{opacity:0}}
+#overOv{position:absolute;top:0;left:0;right:0;bottom:0;z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(4,8,2,0.9);cursor:pointer}
+#overOv.show{display:flex}
+#overOv h2{font-size:clamp(18px,6vw,28px);color:#fc3030;text-shadow:0 0 16px rgba(252,48,48,0.5)}
+#overOv .s{font-size:clamp(10px,3vw,14px);color:#e0fc40;margin:8px 0}
+#overOv .w{font-size:clamp(8px,2.5vw,11px);color:#80c060;margin:4px 0}
+#overOv .cr{font-size:clamp(10px,3vw,13px);color:#40e040;margin:20px 0 8px}
+#overOv .hint{font-size:clamp(7px,2vw,9px);color:rgba(160,232,64,0.4);margin-top:12px;animation:bl 1s step-end infinite}
+#winOv{position:absolute;top:0;left:0;right:0;bottom:0;z-index:200;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(4,20,2,0.9);cursor:pointer}
+#winOv.show{display:flex}
+#winOv h2{font-size:clamp(16px,5vw,24px);color:#40e040;text-shadow:0 0 20px rgba(64,224,64,0.5)}
+#winOv .s{font-size:clamp(9px,2.5vw,12px);color:#e0fc40;margin:10px 0}
+#winOv .hint{font-size:clamp(7px,2vw,9px);color:rgba(160,232,64,0.5);margin-top:14px;animation:bl 1s step-end infinite}
+#ctrl{display:flex;width:100%;padding:8px 12px;padding-bottom:max(8px,env(safe-area-inset-bottom));background:linear-gradient(180deg,#1a2810,#101c08);border-top:2px solid #2a4018;justify-content:space-between;align-items:flex-end;flex-shrink:0}
+.cb{color:#a0e840;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;touch-action:manipulation;font-family:'Press Start 2P',monospace}
+.db{width:clamp(50px,13vw,66px);height:clamp(50px,13vw,66px);font-size:clamp(16px,4.5vw,22px);background:rgba(64,224,64,0.08);border:2px solid rgba(64,224,64,0.2);border-radius:10px}
+.db:active{background:rgba(64,224,64,0.2)}
+.ab{width:clamp(50px,14vw,68px);height:clamp(50px,14vw,68px);font-size:clamp(7px,2vw,9px);border:2px solid rgba(224,252,64,0.3);border-radius:50%;background:rgba(224,252,64,0.08)}
+.ab:active{background:rgba(224,252,64,0.25)}
+.jb{border-color:rgba(100,200,255,0.35);background:rgba(100,200,255,0.08);color:#60c8fc}
+.jb:active{background:rgba(100,200,255,0.25)}
+.dp{display:flex;gap:clamp(4px,1.5vw,8px)}
+.ap{display:flex;gap:clamp(6px,2vw,10px)}
+</style>
+</head>
+<body>
+<div id="wrap">
+<div id="titleOv" onclick="startGame()">
+  <div class="t1">ATTACK OF THE</div>
+  <h1>FROG<br>ARMY</h1>
+  <div class="t2">A NINJA'S LAST STAND</div>
+  <div class="by">BY OSCAR</div>
+  <div class="hint">TAP TO START</div>
+</div>
+<canvas id="game"></canvas>
+<div id="ctrl">
+  <div class="dp">
+    <button class="cb db" id="bL">◀</button>
+    <button class="cb db" id="bR">▶</button>
+  </div>
+  <div class="ap">
+    <button class="cb ab jb" id="bJ">JUMP</button>
+    <button class="cb ab" id="bA">⚔</button>
+  </div>
+</div>
+<div id="overOv"><h2>GAME OVER</h2><div class="s" id="oS"></div><div class="w" id="oW"></div><div class="cr">A GAME BY OSCAR</div><div class="hint" style="font-size:clamp(9px,2.8vw,12px);color:#40e040;margin-top:20px">TAP ANYWHERE TO RETRY</div></div>
+<div id="winOv"><h2>LEVEL COMPLETE!</h2><div class="s" id="wS"></div><div class="hint">TAP FOR NEXT LEVEL</div></div>
+</div>
+<script>
+const C=document.getElementById('game'),X=C.getContext('2d');
+let W,H,G,K={},AF;
+const TILE=0; // computed on resize
+const GRAV=0.55;
+
+// ===== SPRITES =====
+const NS=[
+"0000011111100000","0001111111111000","0011111111111100","0011111111111100",
+"0033333333333300","0033333333333300","0011111111111100","0001111111111000",
+"0000111111110000","0001112111211000","0011121111121100","0011211111112100",
+"0011144444411100","0011111111111100","0011111111111100","0001110001110000",
+"0001110001110000","0001110001110000","0011110001111000","0011110001111000",
+];
+const NC={'0':null,'1':'#14142a','2':'#1e1e38','3':'#90a8c0','4':'#2a2a44'};
+const NP={'0':null,'1':'#14142a','2':'#1e1e38','3':'#ffffff','4':'#2a2a44'};
+const NH={'0':null,'1':'#fc4040','2':'#fc6060','3':'#ffffff','4':'#fc4040'};
+
+const FS=[
+"00R00000000R00","00RR000000RR00","0GGRRGGGGRRGG0","GGGGGGGGGGGGGG",
+"GAGGGGGGGGGGAG","GAGGGGGGGGGGAG","0GGGGMMMMGGGG0","0GGGGGGGGGGGG0",
+"00GGGGGGGGGG00","0GG00GGGG00GG0","GG0000000000GG","GG0000000000GG",
+];
+const FC={'0':null,'G':'#40a030','R':'#e82020','A':'#587848','M':'#1a5010'};
+const FA={'0':null,'G':'#308020','R':'#fc3030','A':'#688858','M':'#0a4008'};
+// Shooter frog: red-tinted, angrier looking
+const FSH={'0':null,'G':'#8a4020','R':'#fc2020','A':'#a06838','M':'#5a2010'};
+
+const KS=[
+"00CC00CC00CC0000","00CCCCCCCCCC0000","00CCDCCDCCDCC000","00CCCCCCCCCC0000",
+"0RRR000000RRR00","0RRR000000RRR00","GGGRRGGGGRRGGGG","GGGGGGGGGGGGGGGG",
+"GAAGGGGGGGGGAAGG","GAAGGGGGGGGGAAGG","0GGGGGMMMMGGGGG0","0GGGGGGGGGGGGGG0",
+"00GGGGGGGGGGGG00","0GGG00GGGG00GGG0","GGG0000000000GGG","GGG0000000000GGG",
+];
+const KC={'0':null,'G':'#30882a','R':'#fc2020','A':'#587848','M':'#0a4008','C':'#e8b020','D':'#d02020'};
+
+function drawSpr(spr,col,sx,sy,sc,flip){
+  const sw=spr[0].length;
+  for(let r=0;r<spr.length;r++)for(let c=0;c<sw;c++){
+    const v=col[spr[r][flip?sw-1-c:c]];
+    if(v){X.fillStyle=v;X.fillRect(Math.round(sx+c*sc),Math.round(sy+r*sc),Math.ceil(sc),Math.ceil(sc))}
+  }
+}
+
+// ===== LEVEL GENERATION =====
+function genLevel(lvl){
+  const T=G.tileSize;
+  const sc=G.sprSc;
+  const levelW=Math.round(W*8+lvl*W*2);
+  const platforms=[];
+  const enemies=[];
+  const powerups=[];
+
+  // Water level: bottom 35% of screen is toxic water
+  const waterLevel=H*0.82;
+  // Main ground height: platforms sit well above water
+  const baseY=H*0.65;
+
+  // ===== BUILD CONNECTED PLATFORM CHAIN =====
+  // Start with a safe wide starting island
+  let curX=0;
+  const maxJumpX=T*6; // max horizontal jump distance
+  const maxJumpY=T*4; // max vertical jump distance
+
+  // Starting island — big and safe
+  platforms.push({x:0,y:baseY,w:T*8,h:waterLevel-baseY+T*2,type:'ground'});
+  curX=T*8;
+
+  while(curX<levelW-W){
+    const r=Math.random();
+
+    if(r<0.35){
+      // Ground island: wide, solid, with enemies
+      const gapW=T*2+Math.random()*T*2|0;
+      const w=T*(5+Math.random()*6)|0;
+      const yVar=(Math.random()-0.5)*T*1.5;
+      const y=Math.max(H*0.45,Math.min(baseY+T*2,baseY+yVar));
+      curX+=gapW;
+      platforms.push({x:curX,y,w,h:waterLevel-y+T*2,type:'ground'});
+      curX+=w;
+
+    } else if(r<0.7){
+      // Floating platform chain: 2-4 stepping stones
+      const count=2+Math.floor(Math.random()*3);
+      let px=curX+T*2;
+      let py=baseY-T*(1+Math.random()*2);
+      for(let i=0;i<count;i++){
+        const pw=T*(2+Math.random()*2)|0;
+        const ph=T*0.7;
+        py=Math.max(H*0.25,Math.min(baseY-T,py+(Math.random()-0.5)*T*2));
+        platforms.push({x:px,y:py,w:pw,h:ph,type:'platform'});
+
+        // Power-up on middle platform
+        if(i===Math.floor(count/2)&&Math.random()<0.5){
+          const types=['lightning','sword','laser'];
+          powerups.push({x:px+pw/2,y:py-T*1.5,type:types[Math.random()*3|0],collected:false});
+        }
+        px+=pw+T*(1.5+Math.random()*1.5);
+      }
+      curX=px;
+
+    } else {
+      // Staircase: ascending or descending platforms
+      const steps=3+Math.floor(Math.random()*3);
+      const goingUp=Math.random()<0.5;
+      let px=curX+T*2;
+      let py=baseY-(goingUp?0:T*steps*1.2);
+      for(let i=0;i<steps;i++){
+        const pw=T*(2+Math.random()*1.5)|0;
+        platforms.push({x:px,y:py,w:pw,h:T*0.7,type:'platform'});
+        px+=pw+T*(1+Math.random());
+        py+=goingUp?-T*1.2:T*1.2;
+        py=Math.max(H*0.2,Math.min(baseY+T,py));
+      }
+      curX=px;
+    }
+  }
+
+  // Boss arena — big flat ground at the end
+  const bossArenaX=curX+T*3;
+  platforms.push({x:bossArenaX,y:baseY,w:T*12,h:waterLevel-baseY+T*2,type:'ground'});
+  const totalLevelW=bossArenaX+T*15;
+
+  // ===== ENEMIES on ground platforms =====
+  const groundPlats=platforms.filter(p=>p.type==='ground'&&p.w>T*4);
+  const numEnemies=Math.round(6+lvl*4);
+  for(let i=0;i<numEnemies;i++){
+    const gp=groundPlats[Math.floor(Math.random()*groundPlats.length)];
+    if(!gp)continue;
+    const ex=gp.x+T*2+Math.random()*(Math.max(0,gp.w-T*4));
+    const armored=Math.random()<0.08+lvl*0.06;
+    const shooter=!armored&&Math.random()<0.2+lvl*0.04;
+    const ftype=armored?'armored':shooter?'shooter':'normal';
+    enemies.push({
+      x:ex,y:gp.y-12*sc,w:14*sc,h:12*sc,
+      vx:shooter?0:-(0.4+Math.random()*0.4+lvl*0.1)*sc*0.4,
+      type:ftype,hp:armored?2:1,
+      alive:true,onGround:true,platIdx:platforms.indexOf(gp),fr:0
+    });
+  }
+
+  // ===== ENEMIES on floating platforms (fewer, walkers only) =====
+  const floatPlats=platforms.filter(p=>p.type==='platform'&&p.w>T*2.5);
+  for(let i=0;i<Math.floor(numEnemies*0.3);i++){
+    if(floatPlats.length===0)break;
+    const fp=floatPlats[Math.floor(Math.random()*floatPlats.length)];
+    enemies.push({
+      x:fp.x+fp.w*0.3,y:fp.y-12*sc,w:14*sc,h:12*sc,
+      vx:-(0.3+Math.random()*0.3)*sc*0.3,
+      type:'normal',hp:1,
+      alive:true,onGround:true,platIdx:platforms.indexOf(fp),fr:0
+    });
+  }
+
+  // ===== POWER-UPS on some floating platforms =====
+  const puPlats=platforms.filter(p=>p.type==='platform');
+  const numPU=Math.round(2+lvl);
+  for(let i=0;i<numPU;i++){
+    if(puPlats.length===0)break;
+    const fp=puPlats[Math.floor(Math.random()*puPlats.length)];
+    const types=['lightning','sword','laser'];
+    const exists=powerups.some(pu=>Math.abs(pu.x-fp.x-fp.w/2)<T*2);
+    if(!exists)powerups.push({x:fp.x+fp.w/2,y:fp.y-T*1.5,type:types[Math.random()*3|0],collected:false});
+  }
+
+  // Boss
+  const boss={
+    x:bossArenaX+T*4,y:baseY-32*sc,w:16*sc*2,h:16*sc*2,
+    hp:8+lvl*6,maxHp:8+lvl*6,vx:0,dir:1,sT:0,phase:1,alive:true
+  };
+
+  // End flag
+  const flag={x:bossArenaX+T*10,y:baseY-T*3};
+
+  return{platforms,enemies,powerups,boss,flag,levelW:totalLevelW,waterLevel,baseY};
+}
+
+// ===== GAME STATE =====
+function resize(){
+  const ctrl=document.getElementById('ctrl');
+  W=window.innerWidth;H=window.innerHeight-ctrl.offsetHeight;
+  C.width=W;C.height=H;
+  if(G){G.tileSize=Math.max(16,W*0.04|0);G.sprSc=Math.max(1.5,W/240)}
+}
+
+function initGame(lvl){
+  resize();
+  const ts=Math.max(16,W*0.04|0);
+  const sc=Math.max(1.5,W/240);
+  const pw=16*sc,ph=20*sc;
+  G={
+    tileSize:ts,sprSc:sc,level:lvl||1,
+    p:{x:ts*3,y:H*0.5,w:pw,h:ph,vx:0,vy:0,onGround:false,facing:1,
+       spd:sc*2.2,jumpPow:sc*5.5},
+    cam:{x:0},
+    eProj:[],expl:[],
+    score:0,lives:3,
+    currentPower:'normal',playerProj:[],
+    shootCD:0,tick:0,swipe:null,
+    iFrames:0,hitFlash:0,freeze:0,toxicFlash:0,
+    announceT:120,state:'playing'
+  };
+  const lv=genLevel(G.level);
+  G.lv=lv;
+  G.p.y=lv.baseY-ph; // spawn on first platform
+}
+
+// ===== PHYSICS =====
+function collides(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+function onPlatform(ent){
+  for(const p of G.lv.platforms){
+    if(ent.x+ent.w>p.x&&ent.x<p.x+p.w&&
+       ent.y+ent.h>=p.y-2&&ent.y+ent.h<=p.y+8&&ent.vy>=0){
+      return p;
+    }
+  }return null;
+}
+
+// ===== PLAYER =====
+function attack(){
+  if(G.shootCD>0)return;
+  const p=G.p,sc=G.sprSc,dir=p.facing;
+
+  // ALWAYS do a sword swipe (melee)
+  const swipeW=sc*16;
+  const swipeH=p.h*0.85;
+  const sx=dir>0?p.x+p.w:p.x-swipeW;
+  const sy=p.y+p.h*0.08;
+  G.swipe={x:sx,y:sy,w:swipeW,h:swipeH,dir,timer:8,maxTimer:8,type:G.currentPower};
+
+  const swipeBox={x:sx,y:sy,w:swipeW,h:swipeH};
+  const dmg=G.currentPower==='sword'?2:1;
+  // Melee hit enemies
+  G.lv.enemies.forEach(e=>{
+    if(!e.alive)return;
+    if(collides(swipeBox,e)){
+      e.hp-=dmg;e.vx=dir*sc*3;
+      if(e.hp<=0){killEnemy(e)}
+      else{G.expl.push({x:e.x+e.w/2,y:e.y+e.h/2,t:6,mt:6,r:4})}
+    }
+  });
+  // Melee hit boss
+  const b=G.lv.boss;
+  if(b.alive&&collides(swipeBox,b)){
+    b.hp-=dmg;G.score+=5;G.expl.push({x:sx+swipeW/2,y:sy+swipeH/2,t:8,mt:8,r:4});
+    if(b.hp<=0)killBoss(b);
+  }
+
+  // ALSO fire ranged projectile if powered up
+  if(G.currentPower==='lightning'){
+    // Bouncing lightning bolts along the ground (like Mario fireballs)
+    G.playerProj.push({
+      x:p.x+p.w/2+dir*p.w*0.3,y:p.y+p.h*0.4,
+      vx:dir*sc*4,vy:-sc*2,type:'lightning',dmg:1,life:120,bounces:3
+    });
+    G.shootCD=12;
+  } else if(G.currentPower==='laser'){
+    // Throwing stars (shuriken) — spread of 3
+    for(let i=-1;i<=1;i++){
+      G.playerProj.push({
+        x:p.x+p.w/2,y:p.y+p.h*0.35,
+        vx:dir*sc*5,vy:i*sc*1.5,type:'star',dmg:1,life:60
+      });
+    }
+    G.shootCD=16;
+  } else if(G.currentPower==='sword'){
+    // Sword power: bigger swipe, that's it (already handled above with dmg:2)
+    G.shootCD=12;
+  } else {
+    // Normal: just the swipe, slower cooldown
+    G.shootCD=18;
+  }
+}
+
+function killEnemy(e){
+  e.alive=false;
+  G.score+=(e.type==='armored'?30:10);
+  G.expl.push({x:e.x+e.w/2,y:e.y+e.h/2,t:14,mt:14,r:8});
+  // Power-up drop
+  if(Math.random()<0.15){
+    const ts=['lightning','laser','sword'];
+    G.lv.powerups.push({x:e.x+e.w/2,y:e.y,type:ts[Math.random()*3|0],collected:false});
+  }
+}
+
+function killBoss(b){
+  b.alive=false;G.score+=500*G.level;
+  for(let i=0;i<8;i++)G.expl.push({x:b.x+Math.random()*b.w,y:b.y+Math.random()*b.h,t:20+i*4,mt:20+i*4,r:12});
+  // Boss always drops a power-up
+  const ts=['lightning','laser','sword'];
+  G.lv.powerups.push({x:b.x+b.w/2,y:b.y,type:ts[Math.random()*3|0],collected:false});
+}
+
+// Stomp check
+function checkStomp(){
+  const p=G.p,sc=G.sprSc;
+  const feetBox={x:p.x+sc*2,y:p.y+p.h-sc*3,w:p.w-sc*4,h:sc*4};
+  let stomped=false;
+  G.lv.enemies.forEach(e=>{
+    if(!e.alive)return;
+    if(p.vy>0&&feetBox.x<e.x+e.w&&feetBox.x+feetBox.w>e.x&&
+       feetBox.y+feetBox.h>=e.y&&feetBox.y<e.y+e.h*0.5){
+      e.hp-=2;
+      if(e.hp<=0){killEnemy(e);G.score+=10}// stomp bonus
+      else{G.expl.push({x:e.x+e.w/2,y:e.y+e.h/2,t:6,mt:6,r:5})}
+      stomped=true;
+    }
+  });
+  const b=G.lv.boss;
+  if(b.alive&&p.vy>0&&feetBox.x<b.x+b.w&&feetBox.x+feetBox.w>b.x&&
+     feetBox.y+feetBox.h>=b.y&&feetBox.y<b.y+b.h*0.3){
+    b.hp-=1;G.score+=5;stomped=true;
+    G.expl.push({x:p.x+p.w/2,y:b.y,t:8,mt:8,r:6});
+    if(b.hp<=0)killBoss(b);
+  }
+  if(stomped)p.vy=-p.jumpPow*0.7;
+  return stomped;
+}
+
+function hitPlayer(){
+  if(G.iFrames>0)return;
+  G.lives--;G.iFrames=90;G.hitFlash=10;G.freeze=5;
+  G.currentPower='normal'; // lose power-up on hit
+  G.expl.push({x:G.p.x+G.p.w/2,y:G.p.y+G.p.h/2,t:18,mt:18,r:10});
+  if(G.lives<=0){
+    G.state='over';
+    document.getElementById('oS').textContent='SCORE  '+G.score;
+    document.getElementById('oW').textContent='LEVEL  '+G.level;
+    document.getElementById('overOv').classList.add('show');
+  }
+}
+
+// ===== UPDATE =====
+function update(){
+  if(G.state==='over'||G.state==='win'){G.tick++;return}
+  if(G.freeze>0){G.freeze--;return}
+  G.tick++;
+  if(G.shootCD>0)G.shootCD--;
+  if(G.iFrames>0)G.iFrames--;
+  if(G.hitFlash>0)G.hitFlash--;
+  if(G.toxicFlash>0)G.toxicFlash--;
+  if(G.announceT>0)G.announceT--;
+
+  const p=G.p,sc=G.sprSc;
+
+  // Horizontal movement
+  if(K.l){p.vx=-p.spd;p.facing=-1}
+  else if(K.r){p.vx=p.spd;p.facing=1}
+  else{p.vx*=0.7;if(Math.abs(p.vx)<0.3)p.vx=0}
+
+  // Jump
+  if(K.j&&p.onGround){p.vy=-p.jumpPow;p.onGround=false}
+
+  // Attack
+  if(K.a)attack();
+  // Swipe timer
+  if(G.swipe){G.swipe.timer--;if(G.swipe.timer<=0)G.swipe=null}
+
+  // Gravity
+  p.vy+=GRAV;
+  p.x+=p.vx;p.y+=p.vy;
+
+  // Check stomp before platform collision
+  if(p.vy>0)checkStomp();
+
+  // Platform collision
+  const plat=onPlatform(p);
+  if(plat){p.y=plat.y-p.h;p.vy=0;p.onGround=true}
+  else{p.onGround=false}
+
+  // Head bump (ONLY on ground/solid platforms, not floating)
+  for(const pl of G.lv.platforms){
+    if(pl.type!=='ground')continue; // floating platforms are one-way: pass through from below
+    if(p.vy<0&&p.x+p.w>pl.x&&p.x<pl.x+pl.w&&p.y<=pl.y+pl.h&&p.y>=pl.y){
+      p.vy=0;p.y=pl.y+pl.h;
+    }
+  }
+
+  // Side collision (ONLY on ground platforms)
+  for(const pl of G.lv.platforms){
+    if(pl.type!=='ground')continue;
+    if(p.y+p.h>pl.y+4&&p.y<pl.y+pl.h-4){
+      if(p.vx>0&&p.x+p.w>pl.x&&p.x+p.w<pl.x+8){p.x=pl.x-p.w}
+      if(p.vx<0&&p.x<pl.x+pl.w&&p.x>pl.x+pl.w-8){p.x=pl.x+pl.w}
+    }
+  }
+
+  // Fall into toxic water = damage + respawn (dramatic!)
+  if(p.y>G.lv.waterLevel-G.tileSize){
+    G.toxicFlash=15; // green screen flash
+    hitPlayer();
+    if(G.lives>0){p.x=G.cam.x+W*0.3;p.y=G.lv.baseY-p.h-G.tileSize*4;p.vy=0}
+  }
+
+  // Camera follows player
+  const targetCam=p.x-W*0.35;
+  G.cam.x+=(targetCam-G.cam.x)*0.1;
+  G.cam.x=Math.max(0,Math.min(G.lv.levelW-W,G.cam.x));
+
+  // === ENEMIES ===
+  G.lv.enemies.forEach(e=>{
+    if(!e.alive)return;
+    e.fr++;
+    // Walkers patrol, shooters stay still
+    if(e.type!=='shooter')e.x+=e.vx;
+    // Reverse at platform edges
+    const ep=G.lv.platforms[e.platIdx];
+    if(ep){
+      if(e.x<=ep.x||e.x+e.w>=ep.x+ep.w)e.vx*=-1;
+    }
+    // Only SHOOTER frogs shoot
+    if(e.type==='shooter'&&Math.abs(e.x-p.x)<W*0.6&&G.tick%70===0){
+      const dir=p.x>e.x?1:-1;
+      G.eProj.push({x:e.x+e.w/2,y:e.y+e.h*0.3,vx:dir*sc*2.5,vy:-sc*0.5,life:80});
+    }
+    // Side collision damage (stomps handled by checkStomp)
+    if(G.iFrames<=0&&e.alive&&collides(p,e)){
+      // If player is above the frog's midpoint, it was a stomp attempt (handled above)
+      // Otherwise it's side contact = damage
+      if(p.y+p.h>e.y+e.h*0.4){
+        hitPlayer();p.vy=-p.jumpPow*0.5;
+      }
+    }
+  });
+
+  // === BOSS ===
+  const b=G.lv.boss;
+  if(b.alive&&p.x>b.x-W){
+    const hpPct=b.hp/b.maxHp;
+    b.phase=hpPct>0.6?1:hpPct>0.3?2:3;
+    const spd=sc*(1+b.phase*0.4);
+    b.x+=spd*b.dir;
+    // Patrol range
+    const bossHome=G.lv.levelW-W*0.7;
+    if(b.x<bossHome-W*0.2||b.x>bossHome+W*0.2)b.dir*=-1;
+    b.sT++;
+    const rate=40-b.phase*10;
+    if(b.sT>rate){b.sT=0;
+      const dir=p.x>b.x?1:-1;
+      G.eProj.push({x:b.x+b.w/2,y:b.y+b.h*0.5,vx:dir*sc*3,vy:0,life:90});
+      if(b.phase>=2){
+        G.eProj.push({x:b.x+b.w/2,y:b.y+b.h*0.5,vx:dir*sc*3,vy:-sc*1.5,life:70});
+        G.eProj.push({x:b.x+b.w/2,y:b.y+b.h*0.5,vx:dir*sc*3,vy:sc*1.5,life:70});
+      }
+    }
+    if(G.iFrames<=0&&collides(p,b)){
+      // If falling onto boss top, it's a stomp (handled by checkStomp)
+      if(!(p.vy>0&&p.y+p.h<b.y+b.h*0.4)){
+        hitPlayer();p.vy=-p.jumpPow*0.8;
+      }
+    }
+  }
+
+  // === PLAYER PROJECTILES (lightning bolts, stars) ===
+  G.playerProj=G.playerProj.filter(pr=>{
+    pr.x+=pr.vx;pr.y+=pr.vy;pr.life--;
+    if(pr.life<=0)return false;
+    // Lightning bolts bounce off platforms (like Mario fireballs)
+    if(pr.type==='lightning'){
+      pr.vy+=GRAV*1.2; // gravity
+      for(const pl of G.lv.platforms){
+        if(pr.x>pl.x&&pr.x<pl.x+pl.w&&pr.y>pl.y-2&&pr.y<pl.y+6&&pr.vy>0){
+          pr.vy=-sc*3.5; // bounce up
+          pr.bounces--;
+          if(pr.bounces<=0)return false;
+          break;
+        }
+      }
+    }
+    // Stars just fly straight (slight gravity)
+    if(pr.type==='star')pr.vy+=0.03;
+    // Hit enemies
+    let hit=false;
+    G.lv.enemies.forEach(e=>{
+      if(!e.alive||hit)return;
+      if(pr.x>e.x&&pr.x<e.x+e.w&&pr.y>e.y&&pr.y<e.y+e.h){
+        e.hp-=pr.dmg;
+        if(e.hp<=0){killEnemy(e)}
+        else{G.expl.push({x:e.x+e.w/2,y:e.y+e.h/2,t:6,mt:6,r:4})}
+        hit=true;
+      }
+    });
+    // Hit boss
+    const b=G.lv.boss;
+    if(!hit&&b.alive&&pr.x>b.x&&pr.x<b.x+b.w&&pr.y>b.y&&pr.y<b.y+b.h){
+      b.hp-=pr.dmg;G.score+=5;hit=true;
+      G.expl.push({x:pr.x,y:pr.y,t:8,mt:8,r:4});
+      if(b.hp<=0)killBoss(b);
+    }
+    if(hit)return false;
+    // Hit platforms (stars/lightning stop)
+    if(pr.type==='star'){
+      for(const pl of G.lv.platforms){
+        if(pr.x>pl.x&&pr.x<pl.x+pl.w&&pr.y>pl.y&&pr.y<pl.y+pl.h)return false;
+      }
+    }
+    return true;
+  });
+
+  // === ENEMY PROJECTILES (frogs still shoot at you) ===
+  G.eProj=G.eProj.filter(ep=>{
+    ep.x+=ep.vx;ep.y+=ep.vy;ep.vy+=0.08;ep.life--;
+    if(ep.life<=0)return false;
+    if(G.iFrames<=0&&ep.x>p.x&&ep.x<p.x+p.w&&ep.y>p.y&&ep.y<p.y+p.h){hitPlayer();return false}
+    for(const pl of G.lv.platforms){if(ep.x>pl.x&&ep.x<pl.x+pl.w&&ep.y>pl.y&&ep.y<pl.y+pl.h)return false}
+    return true;
+  });
+
+  // Power-ups
+  G.lv.powerups.forEach(pu=>{
+    if(pu.collected)return;
+    const dx=pu.x-p.x-p.w/2,dy=pu.y-p.y-p.h/2;
+    if(Math.sqrt(dx*dx+dy*dy)<sc*14){
+      pu.collected=true;G.currentPower=pu.type;G.score+=50;
+    }
+  });
+
+  // Explosions
+  G.expl=G.expl.filter(e=>{e.t--;return e.t>0});
+
+  // Level complete: reach flag after boss dead
+  if(!b.alive&&p.x>=G.lv.flag.x){
+    G.state='win';
+    document.getElementById('wS').textContent='LEVEL '+G.level+' COMPLETE!  SCORE: '+G.score;
+    document.getElementById('winOv').classList.add('show');
+  }
+}
+
+// ===== RENDER =====
+function render(){
+  X.save();
+  const cx=G.cam.x,sc=G.sprSc,T=G.tileSize,t=G.tick;
+
+  // Sky
+  const grd=X.createLinearGradient(0,0,0,H);
+  grd.addColorStop(0,'#1a2830');grd.addColorStop(0.4,'#1e3828');grd.addColorStop(0.7,'#2a4830');grd.addColorStop(1,'#305838');
+  X.fillStyle=grd;X.fillRect(0,0,W,H);
+
+  // Stars
+  for(let i=0;i<15;i++){
+    const sx=((i*137+50)%800-cx*0.05)%W;
+    if(sx<0)continue;
+    X.fillStyle=`rgba(200,220,180,${0.25+Math.sin(t*0.02+i)*0.15})`;
+    X.fillRect(sx,(i*73)%((G.lv?.waterLevel||H)*0.3),1,1);
+  }
+
+  // Background hills (parallax)
+  const gy=G.lv.waterLevel;
+  X.fillStyle='#2a5028';
+  for(let x=0;x<W+20;x+=2){
+    const wx=x+cx*0.2;
+    const h=Math.sin(wx*0.005)*H*0.04+Math.sin(wx*0.012)*H*0.02+H*0.06;
+    X.fillRect(x,gy-h,2,h);
+  }
+  X.fillStyle='#386838';
+  for(let x=0;x<W+20;x+=2){
+    const wx=x+cx*0.4;
+    const h=Math.sin(wx*0.008+1)*H*0.025+H*0.035;
+    X.fillRect(x,gy-h,2,h);
+  }
+
+  // Dead trees (parallax)
+  for(let i=0;i<8;i++){
+    const tx=((i*W*0.3+80)-cx*0.3)%(W*2);
+    if(tx<-30||tx>W+30)continue;
+    X.fillStyle='#305828';X.fillRect(tx,gy-H*0.08,2,H*0.08);
+    X.fillRect(tx-3,gy-H*0.07,2,1);X.fillRect(tx+2,gy-H*0.06,3,1);
+    X.fillStyle='#387030';X.fillRect(tx-3,gy-H*0.09,8,4);X.fillRect(tx-1,gy-H*0.1,4,3);
+  }
+
+  // === PLATFORMS ===
+  G.lv.platforms.forEach(p=>{
+    const px=p.x-cx,py=p.y;
+    if(px+p.w<-10||px>W+10)return;
+    if(p.type==='ground'){
+      // Ground island: bright dirt with vivid grass
+      X.fillStyle='#4a6030';X.fillRect(px,py+4,p.w,p.h-4);
+      X.fillStyle='#5a7838';X.fillRect(px,py,p.w,5);
+      // Grass tufts - vivid green
+      X.fillStyle='#70c858';
+      for(let gx=px;gx<px+p.w;gx+=T*0.5){X.fillRect(gx,py-2,2,4)}
+      // Dirt texture
+      X.fillStyle='#587038';
+      for(let i=0;i<p.w/T;i++){X.fillRect(px+Math.random()*p.w,py+6+Math.random()*Math.min(p.h-10,30),3,2)}
+      // Side edges
+      X.fillStyle='#3a5020';X.fillRect(px,py,2,p.h);X.fillRect(px+p.w-2,py,2,p.h);
+    } else {
+      // Floating platform: bright stone, easy to see
+      X.fillStyle='#607840';X.fillRect(px-1,py-1,p.w+2,p.h+3);
+      X.fillStyle='#7a9858';X.fillRect(px,py,p.w,p.h);
+      X.fillStyle='#a0c070';X.fillRect(px+2,py+1,p.w-4,3);
+      X.fillStyle='#506830';X.fillRect(px,py+p.h-2,p.w,3);
+      // Shadow below
+      X.fillStyle='rgba(0,0,0,0.12)';X.fillRect(px+2,py+p.h+1,p.w-4,4);
+    }
+  });
+
+  // Toxic water — DANGER! Bright green, unmissable
+  const waterY=gy;
+  X.fillStyle='#0c3a0c';X.fillRect(0,waterY,W,H-waterY);
+  X.fillStyle='#185018';X.fillRect(0,waterY+4,W,H-waterY-4);
+  // Bright toxic surface glow
+  const wGrd=X.createLinearGradient(0,waterY,0,waterY+20);
+  wGrd.addColorStop(0,'rgba(100,255,50,0.7)');wGrd.addColorStop(0.3,'rgba(80,240,40,0.4)');wGrd.addColorStop(1,'rgba(64,224,64,0)');
+  X.fillStyle=wGrd;X.fillRect(0,waterY,W,22);
+  // Surface line — very bright
+  X.fillStyle='rgba(150,255,80,0.85)';X.fillRect(0,waterY,W,3);
+  // Toxic shimmer
+  for(let i=0;i<6;i++){
+    const wx=((t*0.5+i*W*0.2+cx*0.1)%(W+40))-20;
+    X.fillStyle='rgba(80,255,40,0.15)';X.fillRect(wx,waterY+2+i*3,W*0.1,2);
+  }
+  // Animated bubbles rising from water
+  for(let i=0;i<8;i++){
+    const bx=((t*0.3*(1+i*0.2)+i*W*0.14+cx*0.05)%(W+20))-10;
+    const by=waterY+H*0.05-((t*0.5+i*40)%((H-waterY)*0.6));
+    const bs=sc*(1+Math.sin(t*0.05+i)*0.3);
+    X.fillStyle='rgba(80,255,40,0.25)';
+    X.beginPath();X.arc(bx,waterY+by%((H-waterY)*0.5)+10,bs,0,Math.PI*2);X.fill();
+  }
+  // Warning glow at ground edges (where gaps are)
+  X.fillStyle='rgba(80,255,40,0.08)';
+  const pulseA=0.06+Math.sin(t*0.06)*0.04;
+  X.fillStyle=`rgba(100,255,50,${pulseA})`;
+  X.fillRect(0,waterY-T*2,W,T*2);
+
+  // Glowing mushrooms on ground edges
+  G.lv.platforms.forEach(p=>{
+    if(p.type!=='ground')return;
+    const px=p.x-cx;
+    if(px+p.w<0||px>W)return;
+    // Mushroom at each end
+    [p.x,p.x+p.w-T*0.3].forEach(mx=>{
+      const msx=mx-cx;
+      if(msx<-10||msx>W+10)return;
+      X.fillStyle='#407030';X.fillRect(msx,p.y-4,2,5);
+      X.fillStyle='#80ff70';X.fillRect(msx-2,p.y-6,6,3);
+      X.fillStyle='rgba(120,255,100,0.18)';X.beginPath();X.arc(msx+1,p.y-5,10,0,Math.PI*2);X.fill();
+    });
+  });
+
+  // Fireflies
+  for(let i=0;i<6;i++){
+    const fx=((80+i*W*0.35-cx*0.6+Math.sin(t*.01+i*2)*25)%W+W)%W;
+    const fy=gy-H*0.1+Math.cos(t*.008+i*3)*H*0.05;
+    if((t+i*13)%60<40){
+      X.fillStyle='#e0fc40';X.fillRect(fx,fy,sc,sc);
+      X.fillStyle='rgba(224,252,64,0.1)';X.beginPath();X.arc(fx,fy,sc*3,0,Math.PI*2);X.fill();
+    }
+  }
+
+  // === POWER-UPS ===
+  G.lv.powerups.forEach(pu=>{
+    if(pu.collected)return;
+    const px=pu.x-cx,py=pu.y+Math.sin(t*0.08)*sc*2;
+    if(px<-20||px>W+20)return;
+    const s=sc*2;
+    X.fillStyle='#1a2a0a';X.fillRect(px-s*2.5,py-s*2.5,s*5,s*5);
+    X.fillStyle='#2a4018';X.fillRect(px-s*2,py-s*2,s*4,s*4);
+    const cc={lightning:'#fcfc30',sword:'#60d0fc',laser:'#fc5030'};
+    X.fillStyle=cc[pu.type];X.fillRect(px-s,py-s,s*2,s*2);
+    if(t%12<6){X.fillStyle='#fff';X.fillRect(px+s*2,py-s*2,sc,sc)}
+  });
+
+  // === ENEMIES ===
+  G.lv.enemies.forEach(e=>{
+    if(!e.alive)return;
+    const ex=e.x-cx;if(ex<-50||ex>W+50)return;
+    const hop=e.fr%20<10?0:-sc;
+    const ecol=e.type==='armored'?FA:e.type==='shooter'?FSH:FC;
+    drawSpr(FS,ecol,ex,e.y+hop,sc,e.vx>0||(e.type==='shooter'&&G.p.x>e.x));
+    // Shooter indicator: small projectile glow near mouth
+    if(e.type==='shooter'){
+      X.fillStyle='rgba(252,80,30,0.5)';
+      X.fillRect(ex+e.w*0.3/sc,e.y+e.h*0.2,sc*2,sc*2);
+    }
+  });
+
+  // === BOSS ===
+  const b=G.lv.boss;
+  if(b.alive){
+    const bx=b.x-cx;
+    if(bx>-100&&bx<W+100){
+      if(b.phase===3&&t%6<3){
+        drawSpr(KS,{'0':null,'G':'#602020','R':'#fc4040','A':'#804040','M':'#401010','C':'#fca020','D':'#fc2020'},bx,b.y,sc*2,b.dir<0);
+      }else{
+        drawSpr(KS,KC,bx,b.y,sc*2,b.dir<0);
+      }
+      // HP bar
+      const bw=b.w;
+      X.fillStyle='#200';X.fillRect(bx,b.y-sc*4,bw,sc*2+2);
+      const barCol=b.phase===3?'#fc3030':b.phase===2?'#e88020':'#e8b020';
+      X.fillStyle=barCol;X.fillRect(bx+1,b.y-sc*4+1,(bw-2)*(b.hp/b.maxHp),sc*2);
+    }
+  }
+
+  // === PLAYER ===
+  const p=G.p;
+  const vis=G.iFrames<=0||Math.floor(G.iFrames/3)%2===0;
+  if(vis){
+    const col=G.hitFlash>0?NH:(G.currentPower!=='normal'?NP:NC);
+    drawSpr(NS,col,p.x-cx,p.y,sc,p.facing<0);
+  }
+  if(G.currentPower!=='normal'){
+    const gc={lightning:'rgba(255,255,60,0.12)',sword:'rgba(100,210,255,0.12)',laser:'rgba(255,80,50,0.12)'};
+    X.fillStyle=gc[G.currentPower];X.fillRect(p.x-cx-sc*2,p.y+p.h-sc,p.w+sc*4,sc*2);
+  }
+
+  // === SWORD SWIPE ===
+  if(G.swipe){
+    const sw=G.swipe,spx=sw.x-cx,progress=1-(sw.timer/sw.maxTimer);
+    const swipeAlpha=Math.max(0,1-progress*1.2);
+    // Arc sweep visual
+    const arcAngleStart=sw.dir>0?-Math.PI*0.5:-Math.PI*0.5;
+    const arcSweep=progress*Math.PI*sw.dir;
+    const arcCx=sw.dir>0?spx:spx+sw.w;
+    const arcCy=sw.y+sw.h/2;
+    const arcR=sw.w*0.9;
+    // Swipe trail
+    const swColors={normal:'rgba(200,220,240,A)',lightning:'rgba(255,255,80,A)',sword:'rgba(100,210,255,A)',laser:'rgba(255,100,60,A)'};
+    const colTemplate=swColors[sw.type]||swColors.normal;
+    X.save();
+    X.globalAlpha=swipeAlpha;
+    // Main arc
+    X.strokeStyle=colTemplate.replace('A','0.7');
+    X.lineWidth=sc*3;
+    X.lineCap='round';
+    X.beginPath();
+    X.arc(arcCx,arcCy,arcR,arcAngleStart,arcAngleStart+arcSweep);
+    X.stroke();
+    // Inner bright arc
+    X.strokeStyle=colTemplate.replace('A','0.9');
+    X.lineWidth=sc*1.5;
+    X.beginPath();
+    X.arc(arcCx,arcCy,arcR*0.7,arcAngleStart,arcAngleStart+arcSweep*0.8);
+    X.stroke();
+    // Tip sparkle
+    const tipAngle=arcAngleStart+arcSweep;
+    const tipX=arcCx+Math.cos(tipAngle)*arcR;
+    const tipY=arcCy+Math.sin(tipAngle)*arcR;
+    X.fillStyle='#ffffff';
+    X.fillRect(tipX-sc,tipY-sc,sc*2,sc*2);
+    // Glow
+    X.fillStyle=colTemplate.replace('A','0.15');
+    X.beginPath();X.arc(arcCx,arcCy,arcR*1.1,0,Math.PI*2);X.fill();
+    X.restore();
+  }
+
+  // === PLAYER PROJECTILES (lightning bolts, stars) ===
+  G.playerProj.forEach(pr=>{
+    const px=pr.x-cx;if(px<-20||px>W+20)return;
+    if(pr.type==='lightning'){
+      // Bouncing lightning ball
+      const flicker=t%4<2;
+      X.fillStyle=flicker?'#fcfc40':'#e0e000';
+      X.fillRect(px-sc*1.5,pr.y-sc*1.5,sc*3,sc*3);
+      X.fillStyle='#ffffff';X.fillRect(px-sc*0.5,pr.y-sc*0.5,sc,sc);
+      // Glow
+      X.fillStyle='rgba(255,255,60,0.2)';X.beginPath();X.arc(px,pr.y,sc*4,0,Math.PI*2);X.fill();
+      // Spark trail
+      X.fillStyle='rgba(255,255,100,0.4)';X.fillRect(px-pr.vx*0.5-sc,pr.y-sc*0.5,sc*2,sc);
+    } else if(pr.type==='star'){
+      // Spinning shuriken
+      const angle=t*0.3+pr.x*0.1;
+      const sz=sc*2;
+      X.save();X.translate(px,pr.y);X.rotate(angle);
+      X.fillStyle='#fc4030';
+      X.fillRect(-sz,-sz*0.3,sz*2,sz*0.6);
+      X.fillRect(-sz*0.3,-sz,sz*0.6,sz*2);
+      X.fillStyle='#fc7050';
+      X.fillRect(-sz*0.5,-sz*0.5,sz,sz);
+      X.restore();
+      // Glow
+      X.fillStyle='rgba(255,60,40,0.15)';X.beginPath();X.arc(px,pr.y,sc*3,0,Math.PI*2);X.fill();
+    }
+  });
+
+  // Enemy projectiles
+  G.eProj.forEach(ep=>{
+    const px=ep.x-cx;if(px<-20||px>W+20)return;
+    X.fillStyle='#80e020';X.fillRect(px-sc,ep.y-sc,sc*2,sc*2);
+    X.fillStyle='rgba(128,224,32,0.2)';X.beginPath();X.arc(px,ep.y,sc*3,0,Math.PI*2);X.fill();
+  });
+
+  // Explosions
+  G.expl.forEach(e=>{
+    const pr=1-(e.t/e.mt),r=e.r*pr*sc;
+    const cs=['#fcfc90','#e0fc40','#40e040','#1a6018'];
+    const cl=cs[Math.min(Math.floor(pr*4),3)];
+    const ex=e.x-cx;
+    for(let i=0;i<8;i++){
+      const a=(e.x*7+e.y*13+i*31)%360*Math.PI/180,d=r*(0.3+((i*17)%100)/140);
+      X.fillStyle=i%3===0?'#fcfc90':cl;X.fillRect(ex+Math.cos(a)*d,e.y+Math.sin(a)*d,sc,sc);
+    }
+    if(pr<0.3){X.fillStyle='#fff';X.fillRect(ex-sc,e.y-sc,sc*2,sc*2)}
+  });
+
+  // Flag
+  if(!G.lv.boss.alive){
+    const fx=G.lv.flag.x-cx,fy=G.lv.flag.y;
+    X.fillStyle='#8b5e3c';X.fillRect(fx,fy,3,T*3);
+    X.fillStyle='#40e040';X.fillRect(fx+3,fy,T,T*0.6);
+    if(t%30<15)X.fillRect(fx+3,fy+T*0.6,T*0.8,T*0.5);
+  }
+
+  // === HUD ===
+  X.fillStyle='rgba(4,8,2,0.55)';X.fillRect(0,0,W,22);
+  const fs=Math.max(7,W*0.018|0);
+  X.font=fs+'px "Press Start 2P"';X.fillStyle='#e0fc40';X.fillText('SCORE '+G.score,6,14);
+  X.fillStyle='#40e040';
+  const lt='LEVEL '+G.level;X.fillText(lt,W/2-lt.length*fs*0.3,14);
+  // Hearts
+  for(let i=0;i<3;i++){
+    X.fillStyle=i<G.lives?'#e82020':'#301010';
+    X.fillRect(W-60+i*18,4,12,12);
+    if(i<G.lives){X.fillStyle='#fc4040';X.fillRect(W-58+i*18,6,8,8)}
+  }
+  // Power-up indicator
+  if(G.currentPower!=='normal'){
+    const pc={lightning:'#fcfc30',sword:'#60d0fc',laser:'#fc5030'};
+    const pn={lightning:'LIGHTNING',sword:'SUPER SWORD',laser:'LASER STARS'};
+    const pi={lightning:'⚡',sword:'⚔',laser:'★'};
+    X.fillStyle='rgba(4,8,2,0.5)';X.fillRect(W*0.3,24,W*0.4,12);
+    X.fillStyle=pc[G.currentPower];
+    X.font=Math.max(6,W*0.014|0)+'px "Press Start 2P"';
+    X.textAlign='center';X.fillText(pi[G.currentPower]+' '+pn[G.currentPower],W/2,33);X.textAlign='left';
+  }
+
+  // Level announcement
+  if(G.announceT>0){
+    const a=Math.min(1,G.announceT/30);
+    X.globalAlpha=a;
+    X.fillStyle='rgba(4,8,2,0.7)';X.fillRect(W*0.1,H*0.35,W*0.8,H*0.12);
+    X.fillStyle='rgba(64,224,64,0.3)';X.fillRect(W*0.1,H*0.35,W*0.8,2);
+    const af=Math.max(10,W*0.04|0);
+    X.font=af+'px "Press Start 2P"';X.fillStyle='#40e040';X.textAlign='center';
+    X.fillText('LEVEL '+G.level,W/2,H*0.35+af+H*0.02);
+    X.textAlign='left';X.globalAlpha=1;
+  }
+
+  // Red flash (enemy hit)
+  if(G.hitFlash>0){X.fillStyle=`rgba(252,40,40,${G.hitFlash/10*0.3})`;X.fillRect(0,0,W,H)}
+  // Green toxic flash (fell in water)
+  if(G.toxicFlash>0){X.fillStyle=`rgba(40,252,40,${G.toxicFlash/15*0.4})`;X.fillRect(0,0,W,H)}
+
+  // === GAME OVER — drawn on canvas so always visible ===
+  if(G.state==='over'){
+    X.fillStyle='rgba(4,8,2,0.85)';X.fillRect(0,0,W,H);
+    X.textAlign='center';
+    const fs1=Math.max(16,W*0.055|0);
+    const fs2=Math.max(10,W*0.03|0);
+    const fs3=Math.max(8,W*0.022|0);
+    X.font=fs1+'px "Press Start 2P"';X.fillStyle='#fc3030';
+    X.fillText('GAME OVER',W/2,H*0.3);
+    X.font=fs2+'px "Press Start 2P"';X.fillStyle='#e0fc40';
+    X.fillText('SCORE  '+G.score,W/2,H*0.42);
+    X.fillStyle='#80c060';
+    X.fillText('LEVEL  '+G.level,W/2,H*0.5);
+    X.font=fs3+'px "Press Start 2P"';X.fillStyle='#40e040';
+    X.fillText('A GAME BY OSCAR',W/2,H*0.62);
+    // Blinking prompt
+    if(Math.floor(G.tick/30)%2===0){
+      X.font=fs3+'px "Press Start 2P"';X.fillStyle='#a0e840';
+      X.fillText('TAP ANYWHERE TO RETRY',W/2,H*0.75);
+    }
+    X.textAlign='left';
+  }
+
+  // === LEVEL COMPLETE — drawn on canvas ===
+  if(G.state==='win'){
+    X.fillStyle='rgba(4,20,2,0.85)';X.fillRect(0,0,W,H);
+    X.textAlign='center';
+    const fs1=Math.max(14,W*0.04|0);
+    const fs2=Math.max(10,W*0.03|0);
+    X.font=fs1+'px "Press Start 2P"';X.fillStyle='#40e040';
+    X.fillText('LEVEL COMPLETE!',W/2,H*0.35);
+    X.font=fs2+'px "Press Start 2P"';X.fillStyle='#e0fc40';
+    X.fillText('SCORE  '+G.score,W/2,H*0.48);
+    if(Math.floor(G.tick/30)%2===0){
+      X.font=Math.max(8,W*0.022|0)+'px "Press Start 2P"';X.fillStyle='#a0e840';
+      X.fillText('TAP FOR NEXT LEVEL',W/2,H*0.65);
+    }
+    X.textAlign='left';
+  }
+
+  X.restore();
+}
+
+function loop(){update();render();AF=requestAnimationFrame(loop)}
+
+function startGame(lvl){
+  ['titleOv','overOv','winOv'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display='none';el?.classList?.remove('show');
+  });
+  initGame(lvl||1);
+  if(AF)cancelAnimationFrame(AF);
+  loop();
+}
+
+function nextLevel(){
+  document.getElementById('winOv').classList.remove('show');
+  const s=G.score,l=G.lives,lv=G.level+1,pw=G.currentPower;
+  initGame(lv);
+  G.score=s;G.lives=l;G.currentPower=pw;
+}
+
+// ===== INPUT =====
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowLeft'||e.key==='a')K.l=true;
+  if(e.key==='ArrowRight'||e.key==='d')K.r=true;
+  if(e.key==='ArrowUp'||e.key==='w'||e.key===' '){K.j=true;e.preventDefault()}
+  if(e.key==='z'||e.key==='x'||e.key==='f')K.a=true;
+  if(document.getElementById('titleOv').style.display!=='none')startGame();
+  if(G?.state==='over')startGame();
+  if(G?.state==='win')nextLevel();
+});
+document.addEventListener('keyup',e=>{
+  if(e.key==='ArrowLeft'||e.key==='a')K.l=false;
+  if(e.key==='ArrowRight'||e.key==='d')K.r=false;
+  if(e.key==='ArrowUp'||e.key==='w'||e.key===' ')K.j=false;
+  if(e.key==='z'||e.key==='x'||e.key==='f')K.a=false;
+});
+
+// Touch
+function addT(id,k){const el=document.getElementById(id);
+  el.addEventListener('touchstart',e=>{e.preventDefault();K[k]=true});
+  el.addEventListener('touchend',e=>{e.preventDefault();K[k]=false});
+  el.addEventListener('touchcancel',e=>{K[k]=false});
+  el.addEventListener('mousedown',()=>K[k]=true);
+  el.addEventListener('mouseup',()=>K[k]=false);
+  el.addEventListener('mouseleave',()=>K[k]=false)}
+addT('bL','l');addT('bR','r');addT('bJ','j');addT('bA','a');
+
+document.getElementById('overOv').addEventListener('click',()=>startGame());
+document.getElementById('overOv').addEventListener('touchstart',e=>{e.preventDefault();startGame()});
+document.getElementById('winOv').addEventListener('click',()=>nextLevel());
+document.getElementById('winOv').addEventListener('touchstart',e=>{e.preventDefault();nextLevel()});
+
+window.addEventListener('resize',()=>{if(G)resize()});
+// Canvas tap for restart/next level
+C.addEventListener('click',()=>{
+  if(G?.state==='over')startGame();
+  if(G?.state==='win')nextLevel();
+});
+C.addEventListener('touchstart',e=>{
+  if(G?.state==='over'){e.preventDefault();startGame()}
+  if(G?.state==='win'){e.preventDefault();nextLevel()}
+});
+resize();
+</script>
+</body>
+</html>
