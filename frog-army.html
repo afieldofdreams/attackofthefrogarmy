@@ -41,6 +41,9 @@ canvas#game{flex:1;width:100%;min-height:0;image-rendering:pixelated;image-rende
 .jb:active{background:rgba(100,200,255,0.25)}
 .dp{display:flex;gap:clamp(4px,1.5vw,8px)}
 .ap{display:flex;gap:clamp(6px,2vw,10px)}
+@media(hover:hover)and (pointer:fine){#ctrl{display:none}}
+.keys{font-size:clamp(6px,1.5vw,8px);color:rgba(160,232,64,0.4);margin-top:12px;line-height:2}
+@media(hover:none){.keys{display:none}}
 </style>
 </head>
 <body>
@@ -50,7 +53,8 @@ canvas#game{flex:1;width:100%;min-height:0;image-rendering:pixelated;image-rende
   <h1>FROG<br>ARMY</h1>
   <div class="t2">A NINJA'S LAST STAND</div>
   <div class="by">BY OSCAR</div>
-  <div class="hint">TAP TO START</div>
+  <div class="keys">ARROW KEYS: MOVE &nbsp; SPACE: JUMP &nbsp; Z: ATTACK</div>
+  <div class="hint" id="startHint">TAP TO START</div>
 </div>
 <canvas id="game"></canvas>
 <div id="ctrl">
@@ -63,8 +67,8 @@ canvas#game{flex:1;width:100%;min-height:0;image-rendering:pixelated;image-rende
     <button class="cb ab" id="bA">⚔</button>
   </div>
 </div>
-<div id="overOv"><h2>GAME OVER</h2><div class="s" id="oS"></div><div class="w" id="oW"></div><div class="cr">A GAME BY OSCAR</div><div class="hint" style="font-size:clamp(9px,2.8vw,12px);color:#40e040;margin-top:20px">TAP ANYWHERE TO RETRY</div></div>
-<div id="winOv"><h2>LEVEL COMPLETE!</h2><div class="s" id="wS"></div><div class="hint">TAP FOR NEXT LEVEL</div></div>
+<div id="overOv"><h2>GAME OVER</h2><div class="s" id="oS"></div><div class="w" id="oW"></div><div class="cr">A GAME BY OSCAR</div><div class="hint" id="retryHint" style="font-size:clamp(9px,2.8vw,12px);color:#40e040;margin-top:20px">TAP ANYWHERE TO RETRY</div></div>
+<div id="winOv"><h2>LEVEL COMPLETE!</h2><div class="s" id="wS"></div><div class="hint" id="nextHint">TAP FOR NEXT LEVEL</div></div>
 </div>
 <script>
 const C=document.getElementById('game'),X=C.getContext('2d');
@@ -131,7 +135,7 @@ function genLevel(lvl){
   const maxJumpY=T*4; // max vertical jump distance
 
   // Starting island — big and safe
-  platforms.push({x:0,y:baseY,w:T*8,h:waterLevel-baseY+T*2,type:'ground'});
+  platforms.push({x:0,y:baseY,w:T*8,h:waterLevel-baseY+T*2,type:'ground',start:true});
   curX=T*8;
 
   while(curX<levelW-W){
@@ -190,7 +194,8 @@ function genLevel(lvl){
   const totalLevelW=bossArenaX+T*15;
 
   // ===== ENEMIES on ground platforms =====
-  const groundPlats=platforms.filter(p=>p.type==='ground'&&p.w>T*4);
+  const safeZone=W; // no enemies on first screen
+  const groundPlats=platforms.filter(p=>p.type==='ground'&&p.w>T*4&&p.x>=safeZone);
   const numEnemies=Math.round(6+lvl*4);
   for(let i=0;i<numEnemies;i++){
     const gp=groundPlats[Math.floor(Math.random()*groundPlats.length)];
@@ -208,7 +213,7 @@ function genLevel(lvl){
   }
 
   // ===== ENEMIES on floating platforms (fewer, walkers only) =====
-  const floatPlats=platforms.filter(p=>p.type==='platform'&&p.w>T*2.5);
+  const floatPlats=platforms.filter(p=>p.type==='platform'&&p.w>T*2.5&&p.x>=safeZone);
   for(let i=0;i<Math.floor(numEnemies*0.3);i++){
     if(floatPlats.length===0)break;
     const fp=floatPlats[Math.floor(Math.random()*floatPlats.length)];
@@ -246,9 +251,10 @@ function genLevel(lvl){
 // ===== GAME STATE =====
 function resize(){
   const ctrl=document.getElementById('ctrl');
-  W=window.innerWidth;H=window.innerHeight-ctrl.offsetHeight;
+  const ctrlH=ctrl.offsetHeight&&ctrl.style.display!=='none'&&getComputedStyle(ctrl).display!=='none'?ctrl.offsetHeight:0;
+  W=window.innerWidth;H=window.innerHeight-ctrlH;
   C.width=W;C.height=H;
-  if(G){G.tileSize=Math.max(16,W*0.04|0);G.sprSc=Math.max(1.5,W/240)}
+  if(G){G.tileSize=Math.max(16,W*0.04|0);G.sprSc=Math.max(1.5,W/240);G.p.jumpPow=Math.sqrt(2*GRAV*H*0.33)}
 }
 
 function initGame(lvl){
@@ -259,7 +265,7 @@ function initGame(lvl){
   G={
     tileSize:ts,sprSc:sc,level:lvl||1,
     p:{x:ts*3,y:H*0.5,w:pw,h:ph,vx:0,vy:0,onGround:false,facing:1,
-       spd:sc*2.2,jumpPow:sc*5.5},
+       spd:sc*2.2,jumpPow:Math.sqrt(2*GRAV*H*0.33)},
     cam:{x:0},
     eProj:[],expl:[],
     score:0,lives:3,
@@ -874,26 +880,30 @@ function render(){
   }
 
   // === HUD ===
-  X.fillStyle='rgba(4,8,2,0.55)';X.fillRect(0,0,W,22);
-  const fs=Math.max(7,W*0.018|0);
-  X.font=fs+'px "Press Start 2P"';X.fillStyle='#e0fc40';X.fillText('SCORE '+G.score,6,14);
+  const fs=Math.max(8,Math.min(W,H)*0.022|0);
+  const hudH=fs+14;
+  X.fillStyle='rgba(4,8,2,0.55)';X.fillRect(0,0,W,hudH);
+  X.font=fs+'px "Press Start 2P"';X.fillStyle='#e0fc40';X.fillText('SCORE '+G.score,8,fs+4);
   X.fillStyle='#40e040';
-  const lt='LEVEL '+G.level;X.fillText(lt,W/2-lt.length*fs*0.3,14);
+  const lt='LEVEL '+G.level;X.fillText(lt,W/2-lt.length*fs*0.3,fs+4);
   // Hearts
+  const hs=Math.max(12,fs);
+  const hsi=hs+6;
   for(let i=0;i<3;i++){
     X.fillStyle=i<G.lives?'#e82020':'#301010';
-    X.fillRect(W-60+i*18,4,12,12);
-    if(i<G.lives){X.fillStyle='#fc4040';X.fillRect(W-58+i*18,6,8,8)}
+    X.fillRect(W-hsi*3+i*hsi-4,(hudH-hs)/2,hs,hs);
+    if(i<G.lives){X.fillStyle='#fc4040';X.fillRect(W-hsi*3+i*hsi-2,(hudH-hs)/2+2,hs-4,hs-4)}
   }
   // Power-up indicator
   if(G.currentPower!=='normal'){
     const pc={lightning:'#fcfc30',sword:'#60d0fc',laser:'#fc5030'};
     const pn={lightning:'LIGHTNING',sword:'SUPER SWORD',laser:'LASER STARS'};
     const pi={lightning:'⚡',sword:'⚔',laser:'★'};
-    X.fillStyle='rgba(4,8,2,0.5)';X.fillRect(W*0.3,24,W*0.4,12);
+    const pfs=Math.max(6,fs*0.75|0);
+    X.fillStyle='rgba(4,8,2,0.5)';X.fillRect(W*0.3,hudH+2,W*0.4,pfs+6);
     X.fillStyle=pc[G.currentPower];
-    X.font=Math.max(6,W*0.014|0)+'px "Press Start 2P"';
-    X.textAlign='center';X.fillText(pi[G.currentPower]+' '+pn[G.currentPower],W/2,33);X.textAlign='left';
+    X.font=pfs+'px "Press Start 2P"';
+    X.textAlign='center';X.fillText(pi[G.currentPower]+' '+pn[G.currentPower],W/2,hudH+pfs+1);X.textAlign='left';
   }
 
   // Level announcement
@@ -1018,6 +1028,12 @@ C.addEventListener('touchstart',e=>{
   if(G?.state==='win'){e.preventDefault();nextLevel()}
 });
 resize();
+// Desktop hint text
+if(window.matchMedia('(hover:hover) and (pointer:fine)').matches){
+  document.getElementById('startHint').textContent='PRESS ANY KEY TO START';
+  document.getElementById('retryHint').textContent='PRESS ANY KEY TO RETRY';
+  document.getElementById('nextHint').textContent='PRESS ANY KEY TO CONTINUE';
+}
 </script>
 </body>
 </html>
