@@ -1,0 +1,9 @@
+name: attack-of-the-frog-army
+static_sites:
+  - name: frog-wars
+    github:
+      repo: afieldofdreams/attackofthefrogarmy
+      branch: main
+      deploy_on_push: true
+    source_dir: /
+    index_document: frog-army.html

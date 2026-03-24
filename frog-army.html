@@ -276,9 +276,11 @@ function initGame(lvl){
 // ===== PHYSICS =====
 function collides(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
 function onPlatform(ent){
+  const feet=ent.y+ent.h;
+  const prevFeet=feet-ent.vy;
   for(const p of G.lv.platforms){
     if(ent.x+ent.w>p.x&&ent.x<p.x+p.w&&
-       ent.y+ent.h>=p.y-2&&ent.y+ent.h<=p.y+8&&ent.vy>=0){
+       prevFeet<=p.y+2&&feet>=p.y-2&&ent.vy>=0){
       return p;
     }
   }return null;
