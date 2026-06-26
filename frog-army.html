@@ -48,6 +48,8 @@ canvas#game{flex:1;width:100%;min-height:0;image-rendering:pixelated;image-rende
 @media(hover:hover)and (pointer:fine){#ctrl{display:none}}
 .keys{font-size:clamp(6px,1.5vw,8px);color:rgba(160,232,64,0.4);margin-top:12px;line-height:2}
 @media(hover:none){.keys{display:none}}
+.mb{width:clamp(36px,9vw,46px);height:clamp(36px,9vw,46px);align-self:center;font-size:clamp(14px,4vw,18px);border:2px solid rgba(160,232,64,0.25);border-radius:50%;background:rgba(160,232,64,0.06);color:#a0e840;font-family:system-ui,sans-serif}
+.mb:active{background:rgba(160,232,64,0.2)}
 </style>
     <!-- PostHog product analytics (EU cloud) -->
     <script>
@@ -68,7 +70,8 @@ canvas#game{flex:1;width:100%;min-height:0;image-rendering:pixelated;image-rende
   <h1>FROG<br>ARMY</h1>
   <div class="t2">A NINJA'S LAST STAND</div>
   <div class="by">BY OSCAR</div>
-  <div class="keys">ARROW KEYS: MOVE &nbsp; SPACE: JUMP &nbsp; Z: ATTACK</div>
+  <div class="t2" id="hiLine"></div>
+  <div class="keys">ARROW KEYS: MOVE &nbsp; SPACE: JUMP &nbsp; Z: ATTACK &nbsp; M: SOUND</div>
   <div class="hint" id="startHint">TAP TO START</div>
 </div>
 <canvas id="game"></canvas>
@@ -77,6 +80,7 @@ canvas#game{flex:1;width:100%;min-height:0;image-rendering:pixelated;image-rende
     <button class="cb db" id="bL">◀</button>
     <button class="cb db" id="bR">▶</button>
   </div>
+  <button class="cb mb" id="bM" aria-label="Toggle sound">🔊</button>
   <div class="ap">
     <button class="cb ab jb" id="bJ">JUMP</button>
     <button class="cb ab" id="bA">⚔</button>
@@ -96,6 +100,68 @@ const LOW_MULT=2.4;     // extra gravity while rising once jump is released — 
 const MAX_FALL=GRAV*26; // terminal velocity so long drops stay controlled
 const COYOTE=6;         // frames you can still jump after stepping off a ledge
 const JUMP_BUF=6;       // frames a jump press is remembered before landing
+
+// ===== SOUND (procedural Web Audio chiptune — no files, stays self-contained) =====
+let AC=null,muted=(localStorage.getItem('fa_muted')==='1');
+function initAudio(){
+  if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return}}
+  if(AC.state==='suspended')AC.resume();
+}
+function tone(freq,dur,type,vol,slideTo){
+  if(!AC||muted)return;
+  const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
+  o.type=type||'square';o.frequency.setValueAtTime(freq,t);
+  if(slideTo)o.frequency.exponentialRampToValueAtTime(Math.max(1,slideTo),t+dur);
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(vol||0.12,t+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g);g.connect(AC.destination);
+  o.start(t);o.stop(t+dur+0.03);
+}
+function noise(dur,vol){
+  if(!AC||muted)return;
+  const t=AC.currentTime,sr=AC.sampleRate,len=Math.max(1,sr*dur|0);
+  const buf=AC.createBuffer(1,len,sr),d=buf.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len);
+  const s=AC.createBufferSource();s.buffer=buf;
+  const g=AC.createGain();g.gain.value=vol||0.12;
+  s.connect(g);g.connect(AC.destination);s.start(t);
+}
+const SFX={
+  jump(){tone(320,0.16,'square',0.10,640)},
+  swipe(){tone(190,0.07,'sawtooth',0.07,90);noise(0.05,0.04)},
+  stomp(){tone(150,0.12,'square',0.13,55);noise(0.07,0.07)},
+  kill(){tone(523,0.06,'square',0.10,784);setTimeout(()=>tone(784,0.08,'square',0.09,1046),55)},
+  combo(n){tone(523+Math.min(n,8)*60,0.07,'square',0.1,(523+Math.min(n,8)*60)*1.3)},
+  powerup(){[523,659,784,1046].forEach((f,i)=>setTimeout(()=>tone(f,0.1,'square',0.11),i*65))},
+  hit(){tone(220,0.25,'sawtooth',0.16,40);noise(0.16,0.1)},
+  shield(){tone(660,0.12,'square',0.1,180);noise(0.08,0.06)},
+  bossHit(){tone(110,0.09,'square',0.11,80)},
+  bossDie(){[420,320,220,160,110].forEach((f,i)=>setTimeout(()=>{tone(f,0.24,'sawtooth',0.17,f*0.5);noise(0.18,0.09)},i*110))},
+  win(){[523,659,784,1046,880,1046].forEach((f,i)=>setTimeout(()=>tone(f,0.14,'square',0.12),i*110))},
+  over(){[392,330,294,196].forEach((f,i)=>setTimeout(()=>tone(f,0.3,'sawtooth',0.13,f*0.7),i*180))},
+};
+// Subtle looping chiptune: marching bass + lead
+const BASSLINE=[98,98,131,98,116,116,98,73];
+const LEADLINE =[392,0,330,392,294,0,349,330];
+let musicIv=null,mStep=0;
+function startMusic(){
+  if(musicIv||!AC)return;
+  musicIv=setInterval(()=>{
+    if(muted||!AC||!G||G.state==='over')return;
+    const b=BASSLINE[mStep%BASSLINE.length];if(b)tone(b,0.22,'triangle',0.05);
+    const l=LEADLINE[mStep%LEADLINE.length];if(l)tone(l,0.15,'square',0.035);
+    mStep++;
+  },225);
+}
+function toggleMute(){
+  muted=!muted;localStorage.setItem('fa_muted',muted?'1':'0');
+  if(!muted)initAudio();
+}
+
+// ===== HIGH SCORE =====
+function getHi(){return parseInt(localStorage.getItem('fa_hiscore')||'0',10)||0}
+function setHi(s){if(s>getHi())localStorage.setItem('fa_hiscore',String(s))}
 
 // ===== SPRITES =====
 const NS=[
@@ -287,14 +353,15 @@ function initGame(lvl){
     tileSize:ts,sprSc:sc,level:lvl||1,
     p:{x:ts*3,y:H*0.5,w:pw,h:ph,vx:0,vy:0,onGround:false,facing:1,
        spd:sc*2.2,jumpPow:Math.sqrt(2*GRAV*H*0.33),
-       jumpHeld:false,jumpBuf:0,coyote:0},
+       jumpHeld:false,jumpBuf:0,coyote:0,squash:0},
     cam:{x:0},
     eProj:[],expl:[],
     score:0,lives:3,
     currentPower:'normal',playerProj:[],
     shootCD:0,tick:0,swipe:null,
     iFrames:0,hitFlash:0,freeze:0,toxicFlash:0,
-    announceT:120,state:'playing'
+    announceT:120,state:'playing',
+    shake:0,pops:[],combo:0,comboTimer:0
   };
   const lv=genLevel(G.level);
   G.lv=lv;
@@ -325,6 +392,7 @@ function attack(){
   const sx=dir>0?p.x+p.w:p.x-swipeW;
   const sy=p.y+p.h*0.08;
   G.swipe={x:sx,y:sy,w:swipeW,h:swipeH,dir,timer:8,maxTimer:8,type:G.currentPower};
+  SFX.swipe();
 
   const swipeBox={x:sx,y:sy,w:swipeW,h:swipeH};
   const dmg=G.currentPower==='sword'?2:1;
@@ -341,6 +409,7 @@ function attack(){
   const b=G.lv.boss;
   if(b.alive&&collides(swipeBox,b)){
     b.hp-=dmg;G.score+=5;G.expl.push({x:sx+swipeW/2,y:sy+swipeH/2,t:8,mt:8,r:4});
+    SFX.bossHit();G.shake=Math.max(G.shake,3);
     if(b.hp<=0)killBoss(b);
   }
 
@@ -370,10 +439,23 @@ function attack(){
   }
 }
 
+// Floating score popup
+function addPop(x,y,text,col){
+  G.pops.push({x,y,text,col:col||'#e0fc40',life:42,mt:42});
+}
+// Kill combo: chaining kills before the timer runs out scales the multiplier
+function bumpCombo(){G.combo++;G.comboTimer=110;return G.combo}
+function comboMult(){return Math.min(5,1+((G.combo-1)/3|0))}
+
 function killEnemy(e){
   e.alive=false;
-  G.score+=(e.type==='armored'?30:10);
+  const n=bumpCombo(),mult=comboMult();
+  const pts=(e.type==='armored'?30:10)*mult;
+  G.score+=pts;
+  addPop(e.x+e.w/2,e.y,'+'+pts,mult>1?'#fcfc40':'#e0fc40');
   G.expl.push({x:e.x+e.w/2,y:e.y+e.h/2,t:14,mt:14,r:8});
+  G.shake=Math.max(G.shake,3);
+  if(n>1)SFX.combo(n);else SFX.kill();
   // Power-up drop
   if(Math.random()<0.15){
     const ts=['lightning','laser','sword'];
@@ -382,7 +464,9 @@ function killEnemy(e){
 }
 
 function killBoss(b){
-  b.alive=false;G.score+=500*G.level;
+  b.alive=false;const pts=500*G.level;G.score+=pts;
+  addPop(b.x+b.w/2,b.y,'+'+pts,'#fcfc40');
+  G.shake=Math.max(G.shake,14);SFX.bossDie();
   for(let i=0;i<8;i++)G.expl.push({x:b.x+Math.random()*b.w,y:b.y+Math.random()*b.h,t:20+i*4,mt:20+i*4,r:12});
   // Boss always drops a power-up
   const ts=['lightning','laser','sword'];
@@ -411,17 +495,24 @@ function checkStomp(){
     G.expl.push({x:p.x+p.w/2,y:b.y,t:8,mt:8,r:6});
     if(b.hp<=0)killBoss(b);
   }
-  if(stomped)p.vy=-p.jumpPow*0.7;
+  if(stomped){p.vy=-p.jumpPow*0.7;p.squash=-0.4;G.shake=Math.max(G.shake,4);SFX.stomp()}
   return stomped;
 }
 
 function hitPlayer(){
   if(G.iFrames>0)return;
-  G.lives--;G.iFrames=90;G.hitFlash=10;G.freeze=5;
-  G.currentPower='normal'; // lose power-up on hit
+  G.combo=0;G.comboTimer=0;
+  G.shake=Math.max(G.shake,7);
+  // A power-up absorbs the hit instead of costing a life (you drop to normal)
+  if(G.currentPower!=='normal'){
+    G.currentPower='normal';G.iFrames=70;G.hitFlash=8;G.freeze=3;
+    addPop(G.p.x+G.p.w/2,G.p.y,'SHIELD!','#60d0fc');SFX.shield();
+    return;
+  }
+  G.lives--;G.iFrames=90;G.hitFlash=10;G.freeze=5;SFX.hit();
   G.expl.push({x:G.p.x+G.p.w/2,y:G.p.y+G.p.h/2,t:18,mt:18,r:10});
   if(G.lives<=0){
-    G.state='over';
+    G.state='over';setHi(G.score);SFX.over();
     document.getElementById('oS').textContent='SCORE  '+G.score;
     document.getElementById('oW').textContent='LEVEL  '+G.level;
     document.getElementById('overOv').classList.add('show');
@@ -438,6 +529,10 @@ function update(){
   if(G.hitFlash>0)G.hitFlash--;
   if(G.toxicFlash>0)G.toxicFlash--;
   if(G.announceT>0)G.announceT--;
+  if(G.comboTimer>0){G.comboTimer--;if(G.comboTimer===0)G.combo=0}
+  if(G.shake>0.1)G.shake*=0.86;else G.shake=0;
+  if(G.p.squash)G.p.squash*=0.82;if(Math.abs(G.p.squash)<0.02)G.p.squash=0;
+  G.pops=G.pops.filter(po=>{po.y-=0.7;po.life--;return po.life>0});
 
   const p=G.p,sc=G.sprSc;
 
@@ -450,7 +545,7 @@ function update(){
   const jumpPressed=K.j&&!p.jumpHeld;p.jumpHeld=K.j;
   if(jumpPressed)p.jumpBuf=JUMP_BUF;else if(p.jumpBuf>0)p.jumpBuf--;
   if(p.onGround)p.coyote=COYOTE;else if(p.coyote>0)p.coyote--;
-  if(p.jumpBuf>0&&p.coyote>0){p.vy=-p.jumpPow;p.onGround=false;p.jumpBuf=0;p.coyote=0}
+  if(p.jumpBuf>0&&p.coyote>0){p.vy=-p.jumpPow;p.onGround=false;p.jumpBuf=0;p.coyote=0;p.squash=-0.5;SFX.jump()}
 
   // Attack
   if(K.a)attack();
@@ -469,9 +564,12 @@ function update(){
   if(p.vy>0)checkStomp();
 
   // Platform collision
+  const impactVy=p.vy;
   const plat=onPlatform(p);
-  if(plat){p.y=plat.y-p.h;p.vy=0;p.onGround=true}
-  else{p.onGround=false}
+  if(plat){
+    if(!p.onGround&&impactVy>5)p.squash=Math.min(0.6,impactVy/MAX_FALL);
+    p.y=plat.y-p.h;p.vy=0;p.onGround=true;
+  } else {p.onGround=false}
 
   // Head bump (ONLY on ground/solid platforms, not floating)
   for(const pl of G.lv.platforms){
@@ -590,6 +688,7 @@ function update(){
     if(!hit&&b.alive&&pr.x>b.x&&pr.x<b.x+b.w&&pr.y>b.y&&pr.y<b.y+b.h){
       b.hp-=pr.dmg;G.score+=5;hit=true;
       G.expl.push({x:pr.x,y:pr.y,t:8,mt:8,r:4});
+      SFX.bossHit();G.shake=Math.max(G.shake,2);
       if(b.hp<=0)killBoss(b);
     }
     if(hit)return false;
@@ -617,6 +716,7 @@ function update(){
     const dx=pu.x-p.x-p.w/2,dy=pu.y-p.y-p.h/2;
     if(Math.sqrt(dx*dx+dy*dy)<sc*14){
       pu.collected=true;G.currentPower=pu.type;G.score+=50;
+      addPop(pu.x,pu.y,'POWER UP!','#fcfc40');SFX.powerup();G.shake=Math.max(G.shake,3);
     }
   });
 
@@ -625,7 +725,7 @@ function update(){
 
   // Level complete: reach flag after boss dead
   if(!b.alive&&p.x>=G.lv.flag.x){
-    G.state='win';
+    G.state='win';setHi(G.score);SFX.win();
     document.getElementById('wS').textContent='LEVEL '+G.level+' COMPLETE!  SCORE: '+G.score;
     document.getElementById('winOv').classList.add('show');
   }
@@ -635,6 +735,9 @@ function update(){
 function render(){
   X.save();
   const cx=G.cam.x,sc=G.sprSc,T=G.tileSize,t=G.tick;
+  // Screen shake (world only — undone before the HUD so it stays stable)
+  let shX=0,shY=0;
+  if(G.shake>0.1){shX=(Math.random()-0.5)*G.shake*2;shY=(Math.random()-0.5)*G.shake*2;X.translate(shX,shY)}
 
   // Sky
   const grd=X.createLinearGradient(0,0,0,H);
@@ -804,7 +907,14 @@ function render(){
   const vis=G.iFrames<=0||Math.floor(G.iFrames/3)%2===0;
   if(vis){
     const col=G.hitFlash>0?NH:(G.currentPower!=='normal'?NP:NC);
-    drawSpr(NS,col,p.x-cx,p.y,sc,p.facing<0);
+    const sq=p.squash||0;
+    if(sq){
+      // Squash & stretch — pivot at the feet
+      X.save();X.translate(p.x-cx+p.w/2,p.y+p.h);X.scale(1+sq*0.4,1-sq*0.4);
+      drawSpr(NS,col,-p.w/2,-p.h,sc,p.facing<0);X.restore();
+    } else {
+      drawSpr(NS,col,p.x-cx,p.y,sc,p.facing<0);
+    }
   }
   if(G.currentPower!=='normal'){
     const gc={lightning:'rgba(255,255,60,0.12)',sword:'rgba(100,210,255,0.12)',laser:'rgba(255,80,50,0.12)'};
@@ -908,6 +1018,18 @@ function render(){
     if(t%30<15)X.fillRect(fx+3,fy+T*0.6,T*0.8,T*0.5);
   }
 
+  // === SCORE POPUPS (world space, so they shake with the action) ===
+  G.pops.forEach(po=>{
+    const a=Math.min(1,po.life/po.mt*1.4),pf=Math.max(8,sc*5|0);
+    X.globalAlpha=a;X.font=pf+'px "Press Start 2P"';X.textAlign='center';
+    X.fillStyle='#000';X.fillText(po.text,po.x-cx+1,po.y+1);
+    X.fillStyle=po.col;X.fillText(po.text,po.x-cx,po.y);
+    X.textAlign='left';X.globalAlpha=1;
+  });
+
+  // Undo screen shake so the HUD/overlays stay rock-steady
+  if(shX||shY)X.translate(-shX,-shY);
+
   // === HUD ===
   const fs=Math.max(8,Math.min(W,H)*0.022|0);
   const hudH=fs+14;
@@ -922,6 +1044,18 @@ function render(){
     X.fillStyle=i<G.lives?'#e82020':'#301010';
     X.fillRect(W-hsi*3+i*hsi-4,(hudH-hs)/2,hs,hs);
     if(i<G.lives){X.fillStyle='#fc4040';X.fillRect(W-hsi*3+i*hsi-2,(hudH-hs)/2+2,hs-4,hs-4)}
+  }
+  // High score (ticks up live once you pass it)
+  X.textAlign='right';X.fillStyle='#80c060';
+  X.fillText('HI '+Math.max(getHi(),G.score),W-hsi*3-12,fs+4);
+  X.textAlign='left';
+  // Kill combo
+  if(G.combo>=2){
+    const cf=Math.max(7,fs*0.7|0),cm=comboMult();
+    X.font=cf+'px "Press Start 2P"';
+    X.fillStyle=cm>1?'#fcfc40':'#a0e840';
+    X.fillText('COMBO x'+G.combo+(cm>1?'  '+cm+'×':''),8,hudH+cf+6);
+    X.font=fs+'px "Press Start 2P"';
   }
   // Power-up indicator
   if(G.currentPower!=='normal'){
@@ -965,8 +1099,10 @@ function render(){
     X.fillText('SCORE  '+G.score,W/2,H*0.42);
     X.fillStyle='#80c060';
     X.fillText('LEVEL  '+G.level,W/2,H*0.5);
+    X.fillStyle=G.score>=getHi()?'#fcfc40':'#80c060';
+    X.fillText((G.score>=getHi()?'NEW BEST  ':'BEST  ')+getHi(),W/2,H*0.57);
     X.font=fs3+'px "Press Start 2P"';X.fillStyle='#40e040';
-    X.fillText('A GAME BY OSCAR',W/2,H*0.62);
+    X.fillText('A GAME BY OSCAR',W/2,H*0.64);
     // Blinking prompt
     if(Math.floor(G.tick/30)%2===0){
       X.font=fs3+'px "Press Start 2P"';X.fillStyle='#a0e840';
@@ -1002,6 +1138,7 @@ function startGame(lvl){
     const el=document.getElementById(id);
     if(el)el.style.display='none';el?.classList?.remove('show');
   });
+  initAudio();startMusic();
   initGame(lvl||1);
   if(AF)cancelAnimationFrame(AF);
   loop();
@@ -1016,6 +1153,7 @@ function nextLevel(){
 
 // ===== INPUT =====
 document.addEventListener('keydown',e=>{
+  if(e.key==='m'||e.key==='M'){doMute();return}
   if(e.key==='ArrowLeft'||e.key==='a')K.l=true;
   if(e.key==='ArrowRight'||e.key==='d')K.r=true;
   if(e.key==='ArrowUp'||e.key==='w'||e.key===' '){K.j=true;e.preventDefault()}
@@ -1040,6 +1178,19 @@ function addT(id,k){const el=document.getElementById(id);
   el.addEventListener('mouseup',()=>K[k]=false);
   el.addEventListener('mouseleave',()=>K[k]=false)}
 addT('bL','l');addT('bR','r');addT('bJ','j');addT('bA','a');
+
+// Mute toggle (control-bar button + M key)
+const bM=document.getElementById('bM');
+function updMute(){if(bM)bM.textContent=muted?'🔇':'🔊'}
+function doMute(){toggleMute();updMute()}
+if(bM){
+  bM.addEventListener('click',e=>{e.stopPropagation();initAudio();doMute()});
+  bM.addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();initAudio();doMute()});
+}
+updMute();
+// Show best score on the title screen
+const hiLine=document.getElementById('hiLine');
+if(hiLine)hiLine.textContent=getHi()>0?'BEST  '+getHi():'';
 
 document.getElementById('overOv').addEventListener('click',()=>startGame());
 document.getElementById('overOv').addEventListener('touchstart',e=>{e.preventDefault();startGame()});
