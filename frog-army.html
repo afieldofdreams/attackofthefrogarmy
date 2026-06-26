@@ -90,6 +90,12 @@ const C=document.getElementById('game'),X=C.getContext('2d');
 let W,H,G,K={},AF;
 const TILE=0; // computed on resize
 const GRAV=0.55;
+// --- Jump feel: gravity is asymmetric so jumps land snappy instead of floaty ---
+const FALL_MULT=1.6;    // extra gravity while falling — quicker, weightier descent
+const LOW_MULT=2.4;     // extra gravity while rising once jump is released — variable jump height
+const MAX_FALL=GRAV*26; // terminal velocity so long drops stay controlled
+const COYOTE=6;         // frames you can still jump after stepping off a ledge
+const JUMP_BUF=6;       // frames a jump press is remembered before landing
 
 // ===== SPRITES =====
 const NS=[
@@ -280,7 +286,8 @@ function initGame(lvl){
   G={
     tileSize:ts,sprSc:sc,level:lvl||1,
     p:{x:ts*3,y:H*0.5,w:pw,h:ph,vx:0,vy:0,onGround:false,facing:1,
-       spd:sc*2.2,jumpPow:Math.sqrt(2*GRAV*H*0.33)},
+       spd:sc*2.2,jumpPow:Math.sqrt(2*GRAV*H*0.33),
+       jumpHeld:false,jumpBuf:0,coyote:0},
     cam:{x:0},
     eProj:[],expl:[],
     score:0,lives:3,
@@ -439,16 +446,23 @@ function update(){
   else if(K.r){p.vx=p.spd;p.facing=1}
   else{p.vx*=0.7;if(Math.abs(p.vx)<0.3)p.vx=0}
 
-  // Jump
-  if(K.j&&p.onGround){p.vy=-p.jumpPow;p.onGround=false}
+  // Jump — buffered press + coyote time make the timing forgiving
+  const jumpPressed=K.j&&!p.jumpHeld;p.jumpHeld=K.j;
+  if(jumpPressed)p.jumpBuf=JUMP_BUF;else if(p.jumpBuf>0)p.jumpBuf--;
+  if(p.onGround)p.coyote=COYOTE;else if(p.coyote>0)p.coyote--;
+  if(p.jumpBuf>0&&p.coyote>0){p.vy=-p.jumpPow;p.onGround=false;p.jumpBuf=0;p.coyote=0}
 
   // Attack
   if(K.a)attack();
   // Swipe timer
   if(G.swipe){G.swipe.timer--;if(G.swipe.timer<=0)G.swipe=null}
 
-  // Gravity
-  p.vy+=GRAV;
+  // Gravity — full strength rising (keeps jump height & level reachability),
+  // heavier falling, heavier still when jump is released early (variable jump height)
+  if(p.vy>0)p.vy+=GRAV*FALL_MULT;
+  else if(p.vy<0&&!K.j)p.vy+=GRAV*LOW_MULT;
+  else p.vy+=GRAV;
+  if(p.vy>MAX_FALL)p.vy=MAX_FALL;
   p.x+=p.vx;p.y+=p.vy;
 
   // Check stomp before platform collision
